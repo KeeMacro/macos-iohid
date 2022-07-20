@@ -1,8 +1,9 @@
 extern crate prost;
 
+
 use std::{
     alloc::{dealloc, Layout},
-    ptr, os::unix::process,
+    ptr, os::{unix::process, raw::c_char},
 };
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
@@ -13,12 +14,13 @@ include!(concat!(env!("OUT_DIR"), "/keeproto.rs"));
 
 #[link(name = "ezmacos")]
 extern "C" {
-    pub fn list_processes(length: &mut u32, out_bytes: &mut *mut u8);
-    pub fn send_key_to_pid(pid: i32, virtual_key: u16);
-    pub fn are_we_trusted() -> bool;
-    pub fn acquire_privileges() -> bool;
-    pub fn request_io_access();
-    pub fn check_io_access() -> bool;
+    fn list_processes(length: &mut u32, out_bytes: &mut *mut u8);
+    fn send_key_to_pid(pid: i32, virtual_key: u16);
+    fn are_we_trusted() -> bool;
+    fn acquire_privileges() -> bool;
+    fn request_io_access();
+    fn check_io_access() -> bool;
+    fn is_process_active(suffix: *const c_char) -> bool;
 }
 
 // trait can be used for Mac/Windows/Linux implementations
@@ -30,11 +32,17 @@ pub trait OSController {
     fn acquire_privileges() -> bool;
     fn request_io_access();
     fn check_io_access() -> bool;
+    fn is_process_active(suffix: &str) -> bool;
 }
 
 pub struct Control {}
 
 impl OSController for Control {
+    // TODO
+    fn is_process_active(suffix: &str) -> bool {
+        return false
+    }
+    
     fn is_process_running(suffix: &str) -> bool {
         let processes = Self::list_processes();
         let is_running=false;
