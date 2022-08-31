@@ -3,7 +3,7 @@ extern crate prost;
 
 use std::{
     alloc::{dealloc, Layout},
-    ptr, os::{unix::process, raw::c_char},
+    ptr, os::{unix::process, raw::c_char}, io::Read,
 };
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
@@ -16,11 +16,13 @@ include!(concat!(env!("OUT_DIR"), "/keeproto.rs"));
 extern "C" {
     fn list_processes(length: &mut u32, out_bytes: &mut *mut u8);
     fn send_key_to_pid(pid: i32, virtual_key: u16);
+    fn send_key_up_to_pid(pid: i32, virtual_key: u16);
+    fn send_key_down_to_pid(pid: i32, virtual_key: u16, shift: bool, alt: bool, control: bool);
     fn are_we_trusted() -> bool;
     fn acquire_privileges() -> bool;
     fn request_io_access();
     fn check_io_access() -> bool;
-    fn is_process_active(suffix: *const c_char) -> bool;
+    fn is_process_active(length: i64, in_bytes: &u8 ) -> bool;
 }
 
 // trait can be used for Mac/Windows/Linux implementations
@@ -28,6 +30,8 @@ pub trait OSController {
     fn is_process_running(suffix: &str) -> bool;
     fn list_processes() -> Vec<String>;
     fn send_key_to_pid(pid: i32, virtual_key: u16);
+    fn send_key_up_to_pid(pid: i32, virtual_key: u16);
+    fn send_key_down_to_pid(pid: i32, virtual_key: u16, shift: bool, alt: bool, control: bool);
     fn are_we_trusted() -> bool;
     fn acquire_privileges() -> bool;
     fn request_io_access();
@@ -40,7 +44,16 @@ pub struct Control {}
 impl OSController for Control {
     // TODO
     fn is_process_active(suffix: &str) -> bool {
-        return false
+        let kstring = KString {value: suffix.to_string()};
+        let mut buf:Vec<u8> = Vec::new();
+        kstring.encode(&mut buf).unwrap();
+        let in_bytes:&[u8] = &buf;
+        let length = buf.len();
+
+        unsafe { 
+            let raw = std::ffi::CString::new(suffix).unwrap().into_raw();
+            return is_process_active(length as i64, &in_bytes[0]);
+        }
     }
     
     fn is_process_running(suffix: &str) -> bool {
@@ -119,7 +132,20 @@ impl OSController for Control {
     }
 
     fn send_key_to_pid(pid: i32, virtual_key: u16) {
-        todo!()
+        unsafe {
+            send_key_to_pid(pid, virtual_key);
+        }
+    }
+
+    fn send_key_up_to_pid(pid: i32, virtual_key: u16) {
+        unsafe {
+            send_key_up_to_pid(pid, virtual_key);
+        }
+    }
+    fn send_key_down_to_pid(pid: i32, virtual_key: u16, shift: bool, alt: bool, control: bool) {
+        unsafe {
+            send_key_down_to_pid(pid, virtual_key, shift, alt, control);
+        }
     }
 
     fn are_we_trusted() -> bool {
