@@ -1,16 +1,12 @@
 extern crate prost;
 
-
-use std::{
-    alloc::{dealloc, Layout},
-    ptr, os::{unix::process, raw::c_char}, io::Read,
-};
-
-use bytes::{Buf, BufMut, Bytes, BytesMut};
-use prost::{Enumeration, Message};
+use std::{alloc::{dealloc, Layout}};
+use bytes::{BufMut,BytesMut};
+use prost::{Message};
 
 // bring proto defs into this namespace
 include!(concat!(env!("OUT_DIR"), "/keeproto.rs"));
+
 
 #[link(name = "ezmacos")]
 extern "C" {
@@ -23,6 +19,7 @@ extern "C" {
     fn request_io_access();
     fn check_io_access() -> bool;
     fn is_process_active(length: i64, in_bytes: &u8 ) -> bool;
+    fn app_focus_change(cb: unsafe extern "C" fn() -> ());
 }
 
 // trait can be used for Mac/Windows/Linux implementations
@@ -37,6 +34,7 @@ pub trait OSController {
     fn request_io_access();
     fn check_io_access() -> bool;
     fn is_process_active(suffix: &str) -> bool;
+    fn app_focus_change(cb: unsafe extern "C" fn() -> ());
 }
 
 pub struct Control {}
@@ -51,7 +49,7 @@ impl OSController for Control {
         let length = buf.len();
 
         unsafe { 
-            let raw = std::ffi::CString::new(suffix).unwrap().into_raw();
+            //let raw = std::ffi::CString::new(suffix).unwrap().into_raw();
             return is_process_active(length as i64, &in_bytes[0]);
         }
     }
@@ -71,64 +69,49 @@ impl OSController for Control {
     fn list_processes() -> Vec<String> {
         let mut processes = Vec::new();
         println!("Hello, world from rust!");
+
         unsafe {
-            //hello();
+            /*
+                let kstring = KString{ value:"asdf".to_owned()};
+                let mut kstringlist = KStringList{values:Vec::new()};
+                kstringlist.values.push(kstring);
+                let mut buf = BytesMut::with_capacity(1024);
+                kstringlist.encode(&mut buf);
 
-            // println!("is_process_running(): {}", is_process_running());
+                let x = KStringList::decode(&mut buf);
+                print!("{:?}", x);
+            */
+            let mut in_length_val = 0;
+            //let in_length =  &mut in_length_val;
+
+            let mut byte_ptr: *mut u8 = std::ptr::null_mut();
+            let ptr_ptr = &mut byte_ptr;
+
+            list_processes(&mut in_length_val, ptr_ptr);
+            // ?? Why  does align want a power of 2 while Swift tells me layou = 1?
+                let mut bytes = vec![];
+                for i in 0..in_length_val {
+                bytes.push( *(*ptr_ptr).offset(i as isize));
+                }
+
+                let mut buf = BytesMut::new();
+                buf.put_slice(&bytes[..]);
+
+                let mut kstringlist = KStringList{values:Vec::new()};
+
+
+                let _ = kstringlist.merge(&mut buf);
+                for x in kstringlist.values.iter() {
+                processes.push(x.value.clone());
+                }
+            // dealloc appears to work correclty with this alignment
+            // a  memory leak seems to exist around calling a property on
+            //  NSWorkspace.shared.runningApplications
+            // it's a searchable error but people seem to blame XCode
+            
+            dealloc(byte_ptr,Layout::from_size_align_unchecked((in_length_val) as usize, 1),);
         }
-   
-      
-            unsafe {
-                /*
-                    let kstring = KString{ value:"asdf".to_owned()};
-                    let mut kstringlist = KStringList{values:Vec::new()};
-                    kstringlist.values.push(kstring);
-                    let mut buf = BytesMut::with_capacity(1024);
-                    kstringlist.encode(&mut buf);
-
-                    let x = KStringList::decode(&mut buf);
-                    print!("{:?}", x);
-                */
-                let mut in_length_val = 0;
-                //let in_length =  &mut in_length_val;
-
-                let mut byte_ptr: *mut u8 = std::ptr::null_mut();
-                let ptr_ptr = &mut byte_ptr;
-
-                list_processes(&mut in_length_val, ptr_ptr);
-                // ?? Why  does align want a power of 2 while Swift tells me layou = 1?
-
-                
-                 let mut bytes = vec![];
-
-                 for i in 0..in_length_val {
-
-                    bytes.push( *(*ptr_ptr).offset(i as isize));
-                 }
-
-
-                 let mut buf = BytesMut::new();
-                 buf.put_slice(&bytes[..]);
-
-                 let mut kstringlist = KStringList{values:Vec::new()};
-
-
-                 kstringlist.merge(&mut buf);
-                 for x in kstringlist.values.iter() {
-                    processes.push(x.value.clone());
-                 }
-                // dealloc appears to work correclty with this alignment
-                // a  memory leak seems to exist around calling a property on
-                //  NSWorkspace.shared.runningApplications
-                // it's a searchable error but people seem to blame XCode
-                
-                dealloc(byte_ptr,Layout::from_size_align_unchecked((in_length_val) as usize, 1),);
-     
-          
-            }
-            processes
-            //std::thread::sleep(std::time::Duration::from_millis(1));
-     
+        processes
     }
 
     fn send_key_to_pid(pid: i32, virtual_key: u16) {
@@ -170,5 +153,9 @@ impl OSController for Control {
         unsafe {
             return check_io_access()
         }
+    }
+
+    fn app_focus_change(cb: unsafe extern "C" fn() -> ()) {
+        unsafe { app_focus_change(cb); }
     }
 }

@@ -1,12 +1,6 @@
-//
-// Copyright © 2020 Haim Gelfenbeyn
-// This code is licensed under MIT license (see LICENSE.txt for details)
-//
-
 use serde::Deserialize;
 use std::env;
 use std::process::Command;
-
 
 /// This should match whatever is defined in mac_ddc/Package.swift
 /// Anything below 10.15 would require shipping Swift libraries.
@@ -15,10 +9,7 @@ const MACOS_TARGET_VERSION: &str = "12";
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SwiftTargetInfo {
-    triple: String,
     unversioned_triple: String,
-    module_triple: String,
-    swift_runtime_compatibility_version: String,
     #[serde(rename = "librariesRequireRPath")]
     libraries_require_rpath: bool,
 }
@@ -27,8 +18,6 @@ struct SwiftTargetInfo {
 #[serde(rename_all = "camelCase")]
 struct SwiftPaths {
     runtime_library_paths: Vec<String>,
-    runtime_library_import_paths: Vec<String>,
-    runtime_resource_path: String,
 }
 
 #[derive(Debug, Deserialize)]
