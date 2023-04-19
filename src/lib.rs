@@ -8,20 +8,6 @@ use prost::{Message};
 include!(concat!(env!("OUT_DIR"), "/keeproto.rs"));
 
 
-#[link(name = "ezmacos")]
-extern "C" {
-    fn list_processes(length: &mut u32, out_bytes: &mut *mut u8);
-    fn send_key_to_pid(pid: i32, virtual_key: u16);
-    fn send_key_up_to_pid(pid: i32, virtual_key: u16);
-    fn send_key_down_to_pid(pid: i32, virtual_key: u16, shift: bool, alt: bool, control: bool);
-    fn are_we_trusted() -> bool;
-    fn acquire_privileges() -> bool;
-    fn request_io_access();
-    fn check_io_access() -> bool;
-    fn is_process_active(length: i64, in_bytes: &u8 ) -> bool;
-    fn app_focus_change(cb: unsafe extern "C" fn() -> ());
-}
-
 // trait can be used for Mac/Windows/Linux implementations
 pub trait OSController {
     fn is_process_running(suffix: &str) -> bool;
@@ -39,7 +25,73 @@ pub trait OSController {
 
 pub struct Control {}
 
+#[cfg(target_os="windows")]
 impl OSController for Control {
+    fn is_process_running(suffix: &str) -> bool {
+        todo!()
+    }
+
+    fn list_processes() -> Vec<String> {
+        todo!()
+    }
+
+    fn send_key_to_pid(pid: i32, virtual_key: u16) {
+        todo!()
+    }
+
+    fn send_key_up_to_pid(pid: i32, virtual_key: u16) {
+        todo!()
+    }
+
+    fn send_key_down_to_pid(pid: i32, virtual_key: u16, shift: bool, alt: bool, control: bool) {
+        todo!()
+    }
+
+    fn are_we_trusted() -> bool {
+        todo!()
+    }
+
+    fn acquire_privileges() -> bool {
+        todo!()
+    }
+
+    fn request_io_access() {
+        todo!()
+    }
+
+    fn check_io_access() -> bool {
+        todo!()
+    }
+
+    fn is_process_active(suffix: &str) -> bool {
+        todo!()
+    }
+
+    fn app_focus_change(cb: unsafe extern "C" fn() -> ()) {
+        todo!()
+    }
+}
+
+
+#[cfg(target_os="macos")]    
+#[link(name = "ezmacos")]
+extern "C" {
+    fn list_processes(length: &mut u32, out_bytes: &mut *mut u8);
+    fn send_key_to_pid(pid: i32, virtual_key: u16);
+    fn send_key_up_to_pid(pid: i32, virtual_key: u16);
+    fn send_key_down_to_pid(pid: i32, virtual_key: u16, shift: bool, alt: bool, control: bool);
+    fn are_we_trusted() -> bool;
+    fn acquire_privileges() -> bool;
+    fn request_io_access();
+    fn check_io_access() -> bool;
+    fn is_process_active(length: i64, in_bytes: &u8 ) -> bool;
+    fn app_focus_change(cb: unsafe extern "C" fn() -> ());
+}
+
+#[cfg(target_os="macos")]
+impl OSController for Control {
+
+
     // TODO
     fn is_process_active(suffix: &str) -> bool {
         let kstring = KString {value: suffix.to_string()};
