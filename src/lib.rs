@@ -3,6 +3,8 @@ extern crate prost;
 use std::{alloc::{dealloc, Layout}};
 use bytes::{BufMut,BytesMut};
 use prost::{Message};
+use winapi::shared::minwindef::{DWORD, LPARAM, UINT,WPARAM};
+    
 
 // bring proto defs into this namespace
 include!(concat!(env!("OUT_DIR"), "/keeproto.rs"));
@@ -25,8 +27,19 @@ pub trait OSController {
 
 pub struct Control {}
 
+#[cfg(target_os="windows")] 
+impl Control {
+    fn win_send_key_to_pid(pid: DWORD, key: UINT) {
+     
+    }
+}
+
+
 #[cfg(target_os="windows")]
 impl OSController for Control {
+  
+
+
     fn is_process_running(suffix: &str) -> bool {
         todo!()
     }
@@ -36,39 +49,39 @@ impl OSController for Control {
     }
 
     fn send_key_to_pid(pid: i32, virtual_key: u16) {
-        todo!()
+        Self::win_send_key_to_pid(0,0);
     }
 
     fn send_key_up_to_pid(pid: i32, virtual_key: u16) {
-        todo!()
+        println!("key_up_to_pid");
     }
 
     fn send_key_down_to_pid(pid: i32, virtual_key: u16, shift: bool, alt: bool, control: bool) {
-        todo!()
+        println!("key_down_to_pid");
     }
 
     fn are_we_trusted() -> bool {
-        todo!()
+      true
     }
 
     fn acquire_privileges() -> bool {
-        todo!()
+      true
     }
 
     fn request_io_access() {
-        todo!()
+       
     }
 
     fn check_io_access() -> bool {
-        todo!()
+        true
     }
 
     fn is_process_active(suffix: &str) -> bool {
-        todo!()
+        true
     }
 
     fn app_focus_change(cb: unsafe extern "C" fn() -> ()) {
-        todo!()
+        
     }
 }
 

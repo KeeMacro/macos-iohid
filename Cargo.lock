@@ -147,6 +147,7 @@ dependencies = [
  "serde_json",
  "swift-bridge",
  "swift-bridge-build",
+ "winapi",
 ]
 
 [[package]]
