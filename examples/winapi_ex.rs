@@ -1,7 +1,7 @@
 use winapi::shared::minwindef::{BOOL,DWORD, LPARAM, UINT,WPARAM};
 use winapi::shared::windef::HWND;
 use winapi::um::winnt::{PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, HANDLE, PROCESS_VM_WRITE};
-use winapi::um::winuser::{GetWindowThreadProcessId, SendMessageW, WM_KEYDOWN, WM_KEYUP};
+use winapi::um::winuser::{GetWindowThreadProcessId, SendMessageW, WM_KEYDOWN, WM_KEYUP, VK_SHIFT};
 use winapi:: {
     um::{
         processthreadsapi::OpenProcess,
@@ -60,9 +60,12 @@ fn main() {
     let target_handle =handles.window_handles[0];
     unsafe { 
 
-            SendMessageW(target_handle,WM_KEYDOWN, vk_code, 0);
+            // wParam 
+            SendMessageW(target_handle,WM_KEYDOWN , VK_SHIFT.try_into().unwrap(), 0);
+            SendMessageW(target_handle,WM_KEYDOWN , vk_code, 0);
             std::thread::sleep(std::time::Duration::from_millis(300));
             SendMessageW(target_handle,WM_KEYUP, vk_code, 0);
+            SendMessageW(target_handle,WM_KEYUP , VK_SHIFT.try_into().unwrap(), 0);
      
     }
    
