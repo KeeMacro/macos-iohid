@@ -1,22 +1,79 @@
 extern crate prost;
 
-use std::{alloc::{dealloc, Layout}};
+use std::{alloc::{dealloc, Layout}, collections::HashMap, sync::{Arc, Mutex}, borrow::{Borrow, BorrowMut}, cell::RefCell};
 use bytes::{BufMut,BytesMut};
 use prost::{Message};
-use winapi::shared::minwindef::{DWORD, LPARAM, UINT,WPARAM};
-    
+use winapi::{shared::minwindef::{BOOL,DWORD, LPARAM, UINT,WPARAM}, um::winuser::VK_CONTROL};
+use winapi::shared::windef::HWND;
+
+use winapi::um::winnt::{PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, HANDLE, PROCESS_VM_WRITE};
+use winapi::um::winuser::{GetWindowThreadProcessId, SendMessageW, WM_KEYDOWN, WM_KEYUP, VK_MENU,VK_SHIFT};
+use winapi:: {
+    um::{
+        processthreadsapi::OpenProcess,
+        winuser::{EnumWindows}
+    }
+}; 
+
+#[macro_use]
+extern crate lazy_static;
 
 // bring proto defs into this namespace
 include!(concat!(env!("OUT_DIR"), "/keeproto.rs"));
 
+#[derive(Debug)]
+pub enum ActionTargetType<'a> {
+    #[cfg(target_os="windows")]
+    Window(&'a ProcessWindowHandles),
+    Process(i32)
+}
+
+
+#[derive(Debug)]
+pub struct ProcessWindowHandles {
+    pub pid: u32,
+    pub window_handles:Vec::<HWND> 
+}
+
+unsafe extern "system" fn enum_windows_callback(window_handle: HWND, l_param: LPARAM) -> BOOL {
+    let mut process_id = 0; //DWORD
+    GetWindowThreadProcessId(window_handle, &mut process_id);
+    let window_handle_ptr:*mut HWND = std::mem::transmute_copy(&window_handle);
+    let window_handles:&mut ProcessWindowHandles = std::mem::transmute(l_param);
+    //window_handles.push(*window_handle_ptr);
+  
+    // println!("{:#?}", window_handles.pid);
+    if window_handles.pid == process_id { 
+      
+        if !window_handle_ptr.is_null() && winapi::um::winuser::IsWindow(window_handle)  != 0 {
+           //println!("{}", process_id);
+           //println!("{:#?}",window_handle);
+           //println!("{:#?}",window_handle.clone());
+           window_handles.window_handles.push(window_handle.clone());
+           //window_handlespush(window_handle.clone());
+        }
+    }
+    1
+}
+
+pub fn get_window_handles(pid:u32) -> ProcessWindowHandles{
+    unsafe{ 
+     
+        let mut window_handles = Vec::<HWND>::new();
+        let mut handles = ProcessWindowHandles { pid, window_handles};
+        let lparam: LPARAM = std::mem::transmute_copy(& &mut handles);
+        EnumWindows(Some(enum_windows_callback),lparam);
+        handles
+    }
+}
 
 // trait can be used for Mac/Windows/Linux implementations
 pub trait OSController {
     fn is_process_running(suffix: &str) -> bool;
     fn list_processes() -> Vec<String>;
-    fn send_key_to_pid(pid: i32, virtual_key: u16);
-    fn send_key_up_to_pid(pid: i32, virtual_key: u16);
-    fn send_key_down_to_pid(pid: i32, virtual_key: u16, shift: bool, alt: bool, control: bool);
+    fn send_key_to_target(target: ActionTargetType, virtual_key: u16);
+    fn send_key_up_to_target(target: ActionTargetType, virtual_key: u16);
+    fn send_key_down_to_target(target: ActionTargetType, virtual_key: u16, shift: bool, alt: bool, control: bool);
     fn are_we_trusted() -> bool;
     fn acquire_privileges() -> bool;
     fn request_io_access();
@@ -29,8 +86,10 @@ pub struct Control {}
 
 #[cfg(target_os="windows")] 
 impl Control {
-    fn win_send_key_to_pid(pid: DWORD, key: UINT) {
-     
+    fn win_send_key_to_target(target: ActionTargetType, key: u16) {
+        //SendMessageW(target_handle,WM_KEYDOWN , VK_SHIFT.try_into().unwrap(), 0);
+         
+
     }
 }
 
@@ -38,8 +97,6 @@ impl Control {
 #[cfg(target_os="windows")]
 impl OSController for Control {
   
-
-
     fn is_process_running(suffix: &str) -> bool {
         todo!()
     }
@@ -48,16 +105,55 @@ impl OSController for Control {
         todo!()
     }
 
-    fn send_key_to_pid(pid: i32, virtual_key: u16) {
-        Self::win_send_key_to_pid(0,0);
+    fn send_key_to_target(target: ActionTargetType, virtual_key: u16) {
+        if let ActionTargetType::Window(hwnd) = target {
+
+        } 
+     
     }
 
-    fn send_key_up_to_pid(pid: i32, virtual_key: u16) {
-        println!("key_up_to_pid");
+    fn send_key_up_to_target(target: ActionTargetType, virtual_key: u16) {
+        println!("key_up_to_target");
+        if let ActionTargetType::Window(target_handle) = target {
+            unsafe {
+   
+                SendMessageW(target_handle.window_handles[0],WM_KEYUP , virtual_key.try_into().unwrap(), 0);
+            }
+        }
     }
 
-    fn send_key_down_to_pid(pid: i32, virtual_key: u16, shift: bool, alt: bool, control: bool) {
-        println!("key_down_to_pid");
+    fn send_key_down_to_target(target: ActionTargetType, virtual_key: u16, shift: bool, alt: bool, control: bool) {
+        println!("key_down_to_target");
+        if let ActionTargetType::Window(target_handle) = target {
+            unsafe {
+                if shift {
+                    SendMessageW(target_handle.window_handles[0],WM_KEYDOWN , VK_SHIFT.try_into().unwrap(), 0);
+                }
+                if alt {
+                    SendMessageW(target_handle.window_handles[0],WM_KEYDOWN , VK_MENU.try_into().unwrap(), 0);
+                }
+
+                if control {
+                    SendMessageW(target_handle.window_handles[0],WM_KEYDOWN , VK_CONTROL.try_into().unwrap(), 0);
+                }
+                SendMessageW(target_handle.window_handles[0],WM_KEYDOWN , virtual_key.try_into().unwrap(), 0);
+                
+                if shift {
+                    SendMessageW(target_handle.window_handles[0],WM_KEYUP , VK_SHIFT.try_into().unwrap(), 0);
+                }
+                if alt {
+                    SendMessageW(target_handle.window_handles[0],WM_KEYUP , VK_MENU.try_into().unwrap(), 0);
+                }
+
+                if control {
+                    SendMessageW(target_handle.window_handles[0],WM_KEYUP , VK_CONTROL.try_into().unwrap(), 0);
+                }
+
+                //std::thread::sleep(std::time::Duration::from_millis(300));
+                //SendMessageW(target_handle,WM_KEYUP, vk_code, 0);
+                //SendMessageW(target_handle,WM_KEYUP , VK_SHIFT.try_into().unwrap(), 0);
+            }
+        }
     }
 
     fn are_we_trusted() -> bool {
@@ -179,18 +275,20 @@ impl OSController for Control {
         processes
     }
 
-    fn send_key_to_pid(pid: i32, virtual_key: u16) {
+    fn send_key_to_target(target: ActionTargetType, virtual_key: u16) {
         unsafe {
-            send_key_to_pid(pid, virtual_key);
+            if let ActionTargetType(pid) = target { 
+                send_key_to_pid(target, virtual_key);
+            }
         }
     }
 
-    fn send_key_up_to_pid(pid: i32, virtual_key: u16) {
+    fn send_key_up_to_target(target: ActionTargetType, virtual_key: u16) {
         unsafe {
-            send_key_up_to_pid(pid, virtual_key);
+            send_key_up_to_pid(target, virtual_key);
         }
     }
-    fn send_key_down_to_pid(pid: i32, virtual_key: u16, shift: bool, alt: bool, control: bool) {
+    fn send_key_down_to_target(pid: i32, virtual_key: u16, shift: bool, alt: bool, control: bool) {
         unsafe {
             send_key_down_to_pid(pid, virtual_key, shift, alt, control);
         }
