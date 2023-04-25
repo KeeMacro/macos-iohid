@@ -3,7 +3,7 @@ extern crate prost;
 use std::{alloc::{dealloc, Layout}, collections::HashMap, sync::{Arc, Mutex}, borrow::{Borrow, BorrowMut}, cell::RefCell};
 use bytes::{BufMut,BytesMut};
 use prost::{Message};
-use winapi::{shared::minwindef::{BOOL,DWORD, LPARAM, UINT,WPARAM}, um::winuser::VK_CONTROL};
+use winapi::{shared::minwindef::{BOOL,DWORD, LPARAM, UINT,WPARAM}, um::winuser::{VK_CONTROL, SetWinEventHook, EVENT_SYSTEM_FOREGROUND, GetForegroundWindow}};
 use winapi::shared::windef::HWND;
 
 use winapi::um::winnt::{PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, HANDLE, PROCESS_VM_WRITE};
@@ -173,14 +173,50 @@ impl OSController for Control {
     }
 
     fn is_process_active(suffix: &str) -> bool {
-        true
+        unsafe{ 
+            let focused_window = GetForegroundWindow();
+     
+        
+            if let Ok(pid) = suffix.parse() {
+                let handles = get_window_handles(pid);
+                if handles.window_handles.contains(&focused_window) {
+                     return true;
+                }
+            }
+        }
+
+        false
     }
 
     fn app_focus_change(cb: unsafe extern "C" fn() -> ()) {
-        
+        unsafe { WINDOW_FOCUS_PTR = cb; }
+        unsafe { 
+            SetWinEventHook(EVENT_SYSTEM_FOREGROUND,EVENT_SYSTEM_FOREGROUND,
+            std::ptr::null_mut(),Some(window_foreground_change),0,0,0);
+          
+            }
     }
 }
 
+unsafe extern "C" fn _x() {
+
+}
+
+// need a cleaner way to pass the callback
+static mut WINDOW_FOCUS_PTR: unsafe extern "C" fn() = _x;
+
+unsafe extern "system" fn window_foreground_change(
+    event_hook: winapi::shared::windef::HWINEVENTHOOK,
+    event: u32,
+    window: HWND,
+    object: i32,
+    child_wind:i32,
+    thread: u32,
+    _time: u32
+) {
+    println!("window focus change!");
+    WINDOW_FOCUS_PTR();
+}
 
 #[cfg(target_os="macos")]    
 #[link(name = "ezmacos")]
