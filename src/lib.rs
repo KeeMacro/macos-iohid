@@ -3,11 +3,16 @@ extern crate prost;
 use std::{alloc::{dealloc, Layout}, collections::HashMap, sync::{Arc, Mutex}, borrow::{Borrow, BorrowMut}, cell::RefCell};
 use bytes::{BufMut,BytesMut};
 use prost::{Message};
-use winapi::{shared::minwindef::{BOOL,DWORD, LPARAM, UINT,WPARAM}, um::winuser::{VK_CONTROL, SetWinEventHook, EVENT_SYSTEM_FOREGROUND, GetForegroundWindow}};
-use winapi::shared::windef::HWND;
 
+#[cfg(target_os="windows")]
+use winapi::{shared::minwindef::{BOOL,DWORD, LPARAM, UINT,WPARAM}, um::winuser::{VK_CONTROL, SetWinEventHook, EVENT_SYSTEM_FOREGROUND, GetForegroundWindow}};
+#[cfg(target_os="windows")]
+use winapi::shared::windef::HWND;
+#[cfg(target_os="windows")]
 use winapi::um::winnt::{PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, HANDLE, PROCESS_VM_WRITE};
+#[cfg(target_os="windows")]
 use winapi::um::winuser::{GetWindowThreadProcessId, SendMessageW, WM_KEYDOWN, WM_KEYUP, VK_MENU,VK_SHIFT};
+#[cfg(target_os="windows")]
 use winapi:: {
     um::{
         processthreadsapi::OpenProcess,
@@ -35,6 +40,7 @@ pub struct ProcessWindowHandles {
     pub window_handles:Vec::<HWND> 
 }
 
+#[cfg(target_os="windows")]
 unsafe extern "system" fn enum_windows_callback(window_handle: HWND, l_param: LPARAM) -> BOOL {
     let mut process_id = 0; //DWORD
     GetWindowThreadProcessId(window_handle, &mut process_id);
@@ -56,6 +62,7 @@ unsafe extern "system" fn enum_windows_callback(window_handle: HWND, l_param: LP
     1
 }
 
+#[cfg(target_os="windows")]
 pub fn get_window_handles(pid:u32) -> ProcessWindowHandles{
     unsafe{ 
      
@@ -205,6 +212,7 @@ unsafe extern "C" fn _x() {
 // need a cleaner way to pass the callback
 static mut WINDOW_FOCUS_PTR: unsafe extern "C" fn() = _x;
 
+#[cfg(target_os="windows")]
 unsafe extern "system" fn window_foreground_change(
     event_hook: winapi::shared::windef::HWINEVENTHOOK,
     event: u32,
@@ -313,20 +321,25 @@ impl OSController for Control {
 
     fn send_key_to_target(target: ActionTargetType, virtual_key: u16) {
         unsafe {
-            if let ActionTargetType(pid) = target { 
-                send_key_to_pid(target, virtual_key);
+            if let ActionTargetType::Process(pid) = target { 
+                send_key_to_pid(pid, virtual_key);
             }
         }
     }
 
     fn send_key_up_to_target(target: ActionTargetType, virtual_key: u16) {
         unsafe {
-            send_key_up_to_pid(target, virtual_key);
+            if let ActionTargetType::Process(pid) = target {
+                send_key_up_to_pid(pid, virtual_key);
+         
+            }
         }
     }
-    fn send_key_down_to_target(pid: i32, virtual_key: u16, shift: bool, alt: bool, control: bool) {
+    fn send_key_down_to_target(target: ActionTargetType, virtual_key: u16, shift: bool, alt: bool, control: bool) {
         unsafe {
-            send_key_down_to_pid(pid, virtual_key, shift, alt, control);
+            if let ActionTargetType::Process(pid) = target {
+                send_key_down_to_pid(pid, virtual_key, shift, alt, control);
+            }
         }
     }
 
