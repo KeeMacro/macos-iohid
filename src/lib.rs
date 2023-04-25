@@ -23,7 +23,6 @@ include!(concat!(env!("OUT_DIR"), "/keeproto.rs"));
 
 #[derive(Debug)]
 pub enum ActionTargetType<'a> {
-    #[cfg(target_os="windows")]
     Window(&'a ProcessWindowHandles),
     Process(i32)
 }
@@ -32,6 +31,7 @@ pub enum ActionTargetType<'a> {
 #[derive(Debug)]
 pub struct ProcessWindowHandles {
     pub pid: u32,
+    #[cfg(target_os="windows")]
     pub window_handles:Vec::<HWND> 
 }
 
