@@ -43,14 +43,18 @@ fn build_mac_ddc() {
         panic!("Libraries require RPath! Change minimum MacOS value to fix.")
     }
 
-    if !Command::new("swift")
-        .args(&["build", "-c", &profile])
-        .current_dir("../ezmacos/")
-        .status()
-        .unwrap()
-        .success()
-    {
-        panic!("Swift library mac_ddc compilation failed")
+    // Option to skip rebuild
+    if !env::var("SKIP_EZMACOS").is_ok(){ 
+        println!("Skipping EZMACOS");
+        if !Command::new("swift")
+            .args(&["build", "-c", &profile])
+            .current_dir("../ezmacos/")
+            .status()
+            .unwrap()
+            .success()
+        {
+            panic!("Swift library mac_ddc compilation failed")
+        }
     }
 
     swift_target_info.paths.runtime_library_paths.iter().for_each(|path| {
