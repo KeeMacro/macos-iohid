@@ -45,7 +45,7 @@ fn build_mac_ddc() {
 
     // Option to skip rebuild
     if !env::var("SKIP_EZMACOS").is_ok(){ 
-        println!("Skipping EZMACOS");
+        println!("Building EZMACOS");
         if !Command::new("swift")
             .args(&["build", "-c", &profile])
             .current_dir("../ezmacos/")
@@ -55,6 +55,9 @@ fn build_mac_ddc() {
         {
             panic!("Swift library mac_ddc compilation failed")
         }
+    }
+    else {
+        println!("Skipping EZMACOS");
     }
 
     swift_target_info.paths.runtime_library_paths.iter().for_each(|path| {

@@ -1,6 +1,6 @@
 extern crate prost;
 
-use std::{alloc::{dealloc, Layout}, collections::HashMap, sync::{Arc, Mutex}, borrow::{Borrow, BorrowMut}, cell::RefCell};
+use std::{alloc::{dealloc, Layout}};
 use bytes::{BufMut,BytesMut};
 use prost::{Message};
 
@@ -20,13 +20,13 @@ use winapi:: {
     }
 }; 
 
-#[macro_use]
+//#[macro_use]
 extern crate lazy_static;
 
 // bring proto defs into this namespace
 include!(concat!(env!("OUT_DIR"), "/keeproto.rs"));
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug,Copy,Clone)]
 pub enum ActionTargetType<'a> {
     Window(&'a ProcessWindowHandles),
     Process(i32)
@@ -215,6 +215,7 @@ unsafe extern "C" fn _x() {
 }
 
 // need a cleaner way to pass the callback
+#[cfg(target_os="windows")]
 static mut WINDOW_FOCUS_PTR: unsafe extern "C" fn() = _x;
 
 #[cfg(target_os="windows")]
