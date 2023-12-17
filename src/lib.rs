@@ -26,7 +26,7 @@ extern crate lazy_static;
 // bring proto defs into this namespace
 include!(concat!(env!("OUT_DIR"), "/keeproto.rs"));
 
-#[derive(Debug)]
+#[derive(Debug,Clone,Copy)]
 pub enum ActionTargetType<'a> {
     Window(&'a ProcessWindowHandles),
     Process(i32)
@@ -39,6 +39,11 @@ pub struct ProcessWindowHandles {
     #[cfg(target_os="windows")]
     pub window_handles:Vec::<HWND> 
 }
+
+#[cfg(target_os = "windows")]
+unsafe impl Send for ProcessWindowHandles {}
+#[cfg(target_os = "windows")]
+unsafe impl Sync for ProcessWindowHandles {}
 
 #[cfg(target_os="windows")]
 unsafe extern "system" fn enum_windows_callback(window_handle: HWND, l_param: LPARAM) -> BOOL {
