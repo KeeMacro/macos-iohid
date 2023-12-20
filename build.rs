@@ -44,27 +44,27 @@ fn build_mac_ddc() {
     }
 
     // Option to skip rebuild
-    if !env::var("SKIP_EZMACOS").is_ok(){ 
+    //if !env::var("SKIP_EZMACOS").is_ok(){ 
         println!("Building EZMACOS");
         if !Command::new("swift")
             .args(&["build", "-c", &profile])
-            .current_dir("../ezmacos/")
+            .current_dir("ezmacos/")
             .status()
             .unwrap()
             .success()
         {
             panic!("Swift library mac_ddc compilation failed")
         }
-    }
-    else {
-        println!("Skipping EZMACOS");
-    }
+    //}
+    //else {
+    //    println!("Skipping EZMACOS");
+    //}
 
     swift_target_info.paths.runtime_library_paths.iter().for_each(|path| {
         println!("cargo:rustc-link-search=native={}", path);
     });
     println!(
-        "cargo:rustc-link-search=native=../ezmacos/.build/{}/{}",
+        "cargo:rustc-link-search=native=ezmacos/.build/{}/{}",
         swift_target_info.target.unversioned_triple, profile
     );
     println!("cargo:rustc-link-lib=static=ezmacos");
@@ -73,7 +73,8 @@ fn build_mac_ddc() {
 }
 
 fn main() {
-    match prost_build::compile_protos(&["./keeproto/keeproto.proto"], &["./keeproto"]) {
+    println!("Custom build.rs for macos-iohd");
+    match prost_build::compile_protos(&["keeproto/keeproto.proto"], &["keeproto"]) {
         Ok(msg) => {println!("Proto build:{:?}", msg);},
         Err(msg) => {panic!("Proto build error:{}", msg);}
     }

@@ -1,3 +1,6 @@
 [submodule "keeproto"]
 	path = keeproto
 	url = https://github.com/KeeMacro/keeproto
+[submodule "ezmacos"]
+	path = ezmacos
+	url = https://github.com/KeeMacro/ezmacos
