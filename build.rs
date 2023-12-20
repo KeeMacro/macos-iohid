@@ -73,7 +73,7 @@ fn build_mac_ddc() {
 }
 
 fn main() {
-    match prost_build::compile_protos(&["../keeproto/keeproto.proto"], &["../keeproto"]) {
+    match prost_build::compile_protos(&["./keeproto/keeproto.proto"], &["./keeproto"]) {
         Ok(msg) => {println!("Proto build:{:?}", msg);},
         Err(msg) => {panic!("Proto build error:{}", msg);}
     }
