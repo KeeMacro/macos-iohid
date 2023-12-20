@@ -1,0 +1,3 @@
+[submodule "keeproto"]
+	path = keeproto
+	url = https://github.com/KeeMacro/keeproto
